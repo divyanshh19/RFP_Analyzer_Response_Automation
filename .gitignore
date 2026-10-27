@@ -1,0 +1,59 @@
+# Environment variables & secrets (CRITICAL - DO NOT COMMIT)
+.env
+.env.*
+*.env
+!.env.example
+**/.env
+**/.env.*
+**/*.env
+!**/.env.example
+
+# Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+**/venv/
+**/.venv/
+.pytest_cache/
+**/.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Node & Frontend
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+**/dist/
+dist-ssr/
+build/
+*.local
+
+# Vector DB & Storage
+chroma_db/
+**/chroma_db/
+chroma.sqlite3
+**/chroma.sqlite3
+*.sqlite3
+*.db
+/rfp-ai-platform/data/documents/*
+!/rfp-ai-platform/data/documents/.gitkeep
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
