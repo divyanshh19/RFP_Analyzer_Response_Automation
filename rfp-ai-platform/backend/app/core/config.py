@@ -1,5 +1,23 @@
 import os
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Locate .env dynamically
+_config_dir = os.path.dirname(os.path.abspath(__file__))
+_backend_dir = os.path.dirname(os.path.dirname(_config_dir))
+_platform_dir = os.path.dirname(_backend_dir)
+_candidate_envs = [
+    os.path.join(_platform_dir, ".env"),
+    os.path.join(_backend_dir, ".env"),
+    os.path.join(os.getcwd(), ".env"),
+    os.path.join(os.getcwd(), "rfp-ai-platform", ".env"),
+    "../.env",
+    ".env",
+]
+for p in _candidate_envs:
+    if os.path.isfile(p):
+        load_dotenv(p)
+        break
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "AI-Powered RFP Intelligence"
@@ -30,7 +48,18 @@ class Settings(BaseSettings):
     
     # AI Providers
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
-    model_config = SettingsConfigDict(env_file="../.env", case_sensitive=True, extra="ignore")
+    _base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    model_config = SettingsConfigDict(
+        env_file=(
+            os.path.join(_base_dir, ".env"),
+            os.path.join(_base_dir, "..", "rfp-ai-platform", ".env"),
+            "../.env",
+            ".env"
+        ),
+        case_sensitive=True,
+        extra="ignore"
+    )
 
 settings = Settings()

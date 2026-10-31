@@ -5,8 +5,13 @@ from typing import List
 from app.core.config import settings
 from app.schemas.requirement import RequirementCreate
 
-# Initialize Gemini Client
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+# Dynamic Gemini Client Factory
+def get_gemini_client():
+    from app.core.config import settings
+    return genai.Client(api_key=settings.GEMINI_API_KEY)
+
+# Backwards compatibility reference
+client = get_gemini_client()
 
 PROMPT_TEMPLATE = """
 You are an expert RFP (Request for Proposal) analyst.
@@ -33,9 +38,10 @@ DOCUMENT TEXT:
 
 def extract_requirements_from_text(text: str) -> List[RequirementCreate]:
     prompt = PROMPT_TEMPLATE.replace("{text}", text)
+    gemini_client = get_gemini_client()
     
-    response = client.models.generate_content(
-        model="gemini-3.5-flash",
+    response = gemini_client.models.generate_content(
+        model=settings.GEMINI_MODEL,
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -60,9 +66,14 @@ def extract_requirements_from_text(text: str) -> List[RequirementCreate]:
             else:
                 item["priority"] = "MEDIUM"
                 
-            # Quick fix for compliance type mismatch
-            if isinstance(item.get("compliance"), list):
-                item["compliance"] = ", ".join(item["compliance"])
+            # Ensure compliance field is List[str] as expected by RequirementCreate
+            comp_val = item.get("compliance")
+            if isinstance(comp_val, str):
+                item["compliance"] = [c.strip() for c in comp_val.split(",") if c.strip()]
+            elif isinstance(comp_val, list):
+                item["compliance"] = [str(c) for c in comp_val]
+            else:
+                item["compliance"] = []
                 
             try:
                 valid_reqs.append(RequirementCreate(**item))

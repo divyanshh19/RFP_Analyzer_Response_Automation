@@ -1,7 +1,10 @@
+import os
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.routers import auth, documents, retrieval, rfp, generation, export, projects
+from app.api.routers import auth, documents, retrieval, rfp, generation, export, projects, workflow, assistant
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -24,6 +27,8 @@ app.include_router(rfp.router, prefix=settings.API_V1_STR)
 app.include_router(generation.router, prefix=settings.API_V1_STR)
 app.include_router(export.router, prefix=settings.API_V1_STR)
 app.include_router(projects.router, prefix=settings.API_V1_STR)
+app.include_router(workflow.router, prefix=settings.API_V1_STR)
+app.include_router(assistant.router, prefix=settings.API_V1_STR)
 
 @app.get("/health")
 def health_check():

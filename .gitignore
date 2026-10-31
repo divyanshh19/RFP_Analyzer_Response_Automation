@@ -50,6 +50,14 @@ chroma.sqlite3
 *.db
 /rfp-ai-platform/data/documents/*
 !/rfp-ai-platform/data/documents/.gitkeep
+rfp-ai-platform/backend/data/
+**/backend/data/
+*.docx
+
+# Java / Maven
+target/
+**/target/
+*.class
 
 # IDE & OS
 .vscode/

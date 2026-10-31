@@ -5,8 +5,13 @@ from app.core.config import settings
 from app.services.retrieval.rag_service import retrieve_relevant_chunks
 from app.models.rfp import RequirementStatus
 
-# Initialize Gemini Client
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+# Dynamic Gemini Client Factory
+def get_gemini_client():
+    from app.core.config import settings
+    return genai.Client(api_key=settings.GEMINI_API_KEY)
+
+# Backwards compatibility reference
+client = get_gemini_client()
 
 PROMPT_TEMPLATE = """
 You are an expert AI RFP response writer for our enterprise. 
@@ -44,8 +49,9 @@ def generate_draft_response(requirement_text: str) -> dict:
     
     # 3. Generate Grounded Content (Phase 11 via Gemini)
     try:
-        response = client.models.generate_content(
-            model="gemini-3.5-flash",
+        gemini_client = get_gemini_client()
+        response = gemini_client.models.generate_content(
+            model=settings.GEMINI_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.2,
