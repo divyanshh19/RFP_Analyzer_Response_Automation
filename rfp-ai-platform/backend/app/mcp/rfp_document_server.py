@@ -4,7 +4,6 @@ Exposes standardized Model Context Protocol (MCP) tools for RFP document extract
 parsing, deadline identification, criteria extraction, and requirements analysis.
 """
 
-import json
 import os
 import sys
 from typing import List, Dict, Any, Optional
@@ -16,19 +15,11 @@ backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from app.core.config import settings
+from app.core.llm import generate_json_list
 from app.services.extraction import text_extractor
 from app.services.extraction import requirement_extractor
-from google import genai
-from google.genai import types
 
 mcp = FastMCP("rfp-document-server")
-
-def _get_gemini_client() -> genai.Client:
-    api_key = settings.GEMINI_API_KEY
-    if not api_key:
-        api_key = os.getenv("GEMINI_API_KEY", "")
-    return genai.Client(api_key=api_key)
 
 
 class ExtractionResultSchema(BaseModel):
@@ -67,7 +58,7 @@ def extract_rfp_text(file_path: str, file_type: str = "pdf") -> Dict[str, Any]:
     description="Extract line-item technical, functional, security, and operational requirements from document text into structured records."
 )
 def extract_rfp_requirements(text: str) -> List[Dict[str, Any]]:
-    """Analyzes RFP text using Gemini 3.5 Flash to extract line-item requirements."""
+    """Analyzes RFP text using GroqCloud LLM to extract line-item requirements."""
     if not text or len(text.strip()) == 0:
         return []
         
@@ -88,31 +79,24 @@ def extract_deadlines(text: str) -> List[Dict[str, Any]]:
         
     prompt = f"""
 You are an expert procurement analyst. Extract all dates, timelines, and deadlines from this RFP text.
-Return a valid JSON array of objects with schema:
-[
-  {{
-    "event": "e.g., Submission Deadline, Pre-bid Meeting, Q&A Cutoff, Award Date, Project Kickoff",
-    "date": "YYYY-MM-DD or string description if exact date is unspecified",
-    "time": "e.g., 5:00 PM EST or null",
-    "mandatory": true,
-    "source_context": "short quote from document"
-  }}
-]
+Return a valid JSON object with a single key "deadlines" containing an array of objects with schema:
+{{
+  "deadlines": [
+    {{
+      "event": "e.g., Submission Deadline, Pre-bid Meeting, Q&A Cutoff, Award Date, Project Kickoff",
+      "date": "YYYY-MM-DD or string description if exact date is unspecified",
+      "time": "e.g., 5:00 PM EST or null",
+      "mandatory": true,
+      "source_context": "short quote from document"
+    }}
+  ]
+}}
 
 DOCUMENT TEXT (excerpt):
 {text[:20000]}
 """
     try:
-        client = _get_gemini_client()
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.1
-            )
-        )
-        return json.loads(resp.text)
+        return generate_json_list(prompt, list_key="deadlines", temperature=0.1)
     except Exception as e:
         raise RuntimeError(f"Deadline extraction failed: {str(e)}") from e
 
@@ -128,31 +112,24 @@ def extract_eligibility_criteria(text: str) -> List[Dict[str, Any]]:
         
     prompt = f"""
 Extract all mandatory bidder eligibility criteria, minimum qualifications, and certifications required to bid on this tender.
-Return a valid JSON array of objects:
-[
-  {{
-    "criterion_id": "ELIG-001",
-    "description": "Full criterion text",
-    "category": "Financial, Experience, Certification, Legal, or Personnel",
-    "mandatory": true,
-    "proof_required": "e.g. Audited balance sheets, Certificate of Incorporation"
-  }}
-]
+Return a valid JSON object with a single key "criteria" containing an array of objects:
+{{
+  "criteria": [
+    {{
+      "criterion_id": "ELIG-001",
+      "description": "Full criterion text",
+      "category": "Financial, Experience, Certification, Legal, or Personnel",
+      "mandatory": true,
+      "proof_required": "e.g. Audited balance sheets, Certificate of Incorporation"
+    }}
+  ]
+}}
 
 DOCUMENT TEXT:
 {text[:20000]}
 """
     try:
-        client = _get_gemini_client()
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.1
-            )
-        )
-        return json.loads(resp.text)
+        return generate_json_list(prompt, list_key="criteria", temperature=0.1)
     except Exception as e:
         raise RuntimeError(f"Eligibility criteria extraction failed: {str(e)}") from e
 
@@ -168,30 +145,23 @@ def extract_evaluation_criteria(text: str) -> List[Dict[str, Any]]:
         
     prompt = f"""
 Extract the evaluation and scoring criteria from this RFP document.
-Return a valid JSON array:
-[
-  {{
-    "criterion": "e.g., Technical Capability, Relevant Experience, Key Personnel, Cost / Pricing",
-    "weight_percentage": float or null (e.g. 30.0 for 30%),
-    "description": "Details of what is evaluated",
-    "scoring_scale": "e.g., 0-100 or 1-5"
-  }}
-]
+Return a valid JSON object with a single key "evaluation_criteria" containing an array:
+{{
+  "evaluation_criteria": [
+    {{
+      "criterion": "e.g., Technical Capability, Relevant Experience, Key Personnel, Cost / Pricing",
+      "weight_percentage": float or null (e.g. 30.0 for 30%),
+      "description": "Details of what is evaluated",
+      "scoring_scale": "e.g., 0-100 or 1-5"
+    }}
+  ]
+}}
 
 DOCUMENT TEXT:
 {text[:20000]}
 """
     try:
-        client = _get_gemini_client()
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.1
-            )
-        )
-        return json.loads(resp.text)
+        return generate_json_list(prompt, list_key="evaluation_criteria", temperature=0.1)
     except Exception as e:
         raise RuntimeError(f"Evaluation criteria extraction failed: {str(e)}") from e
 
@@ -207,30 +177,23 @@ def extract_mandatory_documents(text: str) -> List[Dict[str, Any]]:
         
     prompt = f"""
 Identify all mandatory attachments, annexures, forms, certifications, and documentation that must be included in the bid submission.
-Return a valid JSON array:
-[
-  {{
-    "document_name": "e.g., Technical Proposal, Annexure B Financial Bid, ISO 27001 Certificate, Non-Disclosure Agreement",
-    "format": "e.g., PDF, Excel, Signed Hardcopy",
-    "required": true,
-    "description": "What the document covers"
-  }}
-]
+Return a valid JSON object with a single key "documents" containing an array:
+{{
+  "documents": [
+    {{
+      "document_name": "e.g., Technical Proposal, Annexure B Financial Bid, ISO 27001 Certificate, Non-Disclosure Agreement",
+      "format": "e.g., PDF, Excel, Signed Hardcopy",
+      "required": true,
+      "description": "What the document covers"
+    }}
+  ]
+}}
 
 DOCUMENT TEXT:
 {text[:20000]}
 """
     try:
-        client = _get_gemini_client()
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.1
-            )
-        )
-        return json.loads(resp.text)
+        return generate_json_list(prompt, list_key="documents", temperature=0.1)
     except Exception as e:
         raise RuntimeError(f"Mandatory documents extraction failed: {str(e)}") from e
 

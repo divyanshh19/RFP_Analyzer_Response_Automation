@@ -46,9 +46,9 @@ class Settings(BaseSettings):
     CHUNK_SIZE: int = int(os.getenv("CHUNK_SIZE", "1000"))
     CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "200"))
     
-    # AI Providers
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
+    # AI Providers (GroqCloud)
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
 
     _base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     model_config = SettingsConfigDict(

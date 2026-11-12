@@ -195,7 +195,7 @@ export default function AgenticWorkflowTab({ projectId, onRefreshNeeded }) {
                             <div className="flex items-center gap-2">
                                 <h4 className="text-sm font-bold text-slate-900">
                                     {isBlocked 
-                                        ? 'Workflow Paused: Google Gemini API Quota Exhausted' 
+                                        ? 'Workflow Paused: GroqCloud API Quota Exhausted' 
                                         : 'Agent Pipeline Execution Halted'}
                                 </h4>
                                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${

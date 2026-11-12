@@ -1,17 +1,9 @@
-import json
-from google import genai
-from google.genai import types
-from app.core.config import settings
+from app.core.llm import get_groq_client, generate_text
 from app.services.retrieval.rag_service import retrieve_relevant_chunks
 from app.models.rfp import RequirementStatus
 
-# Dynamic Gemini Client Factory
-def get_gemini_client():
-    from app.core.config import settings
-    return genai.Client(api_key=settings.GEMINI_API_KEY)
-
 # Backwards compatibility reference
-client = get_gemini_client()
+client = get_groq_client()
 
 PROMPT_TEMPLATE = """
 You are an expert AI RFP response writer for our enterprise. 
@@ -31,7 +23,7 @@ INSTRUCTIONS:
 
 def generate_draft_response(requirement_text: str) -> dict:
     """
-    RAG Pipeline for Response Generation and Gap Analysis via Gemini.
+    RAG Pipeline for Response Generation and Gap Analysis via GroqCloud.
     """
     # 1. Semantic Retrieval (Phase 9)
     chunks = retrieve_relevant_chunks(query=requirement_text, top_k=4)
@@ -47,20 +39,16 @@ def generate_draft_response(requirement_text: str) -> dict:
     context_text = "\n\n".join([f"Source: {c.document_type} (Page {c.page_number})\nText: {c.text}" for c in chunks])
     prompt = PROMPT_TEMPLATE.replace("{requirement}", requirement_text).replace("{context}", context_text)
     
-    # 3. Generate Grounded Content (Phase 11 via Gemini)
+    # 3. Generate Grounded Content (Phase 11 via GroqCloud)
     try:
-        gemini_client = get_gemini_client()
-        response = gemini_client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.2,
-                max_output_tokens=1024
-            )
+        final_text = generate_text(
+            prompt,
+            temperature=0.2,
+            max_tokens=1024,
+            client=get_groq_client(),
         )
-        final_text = response.text.strip()
     except Exception as e:
-        print(f"Gemini Generation Error: {e}")
+        print(f"Groq Generation Error: {e}")
         final_text = "Insufficient evidence in the knowledge base."
     
     # 4. Gap Analysis & Hallucination Prevention (Phase 12)

@@ -6,7 +6,6 @@ compliance intelligence, proposal writing assistance, and workflow status.
 
 import os
 import sys
-import json
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
@@ -14,18 +13,12 @@ backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from app.core.config import settings
+from app.core.llm import get_groq_client, generate_json
 from app.services.agent.workflow_manager import workflow_manager
 from app.mcp.client import mcp_client
-from google import genai
-from google.genai import types
 
 # In-memory session history store: key = f"{user_id}:{project_id}"
 _conversation_store: Dict[str, List[Dict[str, Any]]] = {}
-
-def _get_gemini_client() -> genai.Client:
-    api_key = settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY", "")
-    return genai.Client(api_key=api_key)
 
 
 COPILOT_SYSTEM_PROMPT = """
@@ -155,17 +148,9 @@ Return a valid JSON object:
   ]
 }}
 """
-        client = _get_gemini_client()
+        client = get_groq_client()
         try:
-            resp = client.models.generate_content(
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.2
-                )
-            )
-            data = json.loads(resp.text)
+            data = generate_json(prompt, temperature=0.2, client=client)
             answer_text = data.get("answer", "I could not formulate an answer.")
             citations = data.get("citations", [])
             followups = data.get("suggested_followups", [])

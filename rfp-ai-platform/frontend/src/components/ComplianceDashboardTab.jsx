@@ -187,7 +187,7 @@ export default function ComplianceDashboardTab({ projectId }) {
                             <div className="flex items-center gap-2">
                                 <h4 className="text-sm font-bold text-slate-900">
                                     {isBlocked 
-                                        ? 'Intelligence Engine Blocked: Google Gemini API Quota Exhausted' 
+                                        ? 'Intelligence Engine Blocked: GroqCloud API Quota Exhausted' 
                                         : 'Assessment Pipeline Halted on Infrastructure Error'}
                                 </h4>
                                 <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${

@@ -52,7 +52,7 @@ def requirement_analysis_node(state: RFPWorkflowState) -> dict:
         
     # Check if extraction was blocked by quota or infrastructure failure
     if extraction_error:
-        is_quota = any(q in extraction_error.lower() for q in ["429", "resource_exhausted", "quota", "rate limit", "exceeded your current quota"])
+        is_quota = any(q in extraction_error.lower() for q in ["429", "resource_exhausted", "quota", "rate limit", "rate_limit_exceeded", "exceeded your current quota"])
         is_billing = any(b in extraction_error.lower() for b in ["403", "permission_denied", "free tier is not available", "billing"])
         is_blocked = is_quota or is_billing
         execution_state = WorkflowExecutionState.BLOCKED.value if is_blocked else WorkflowExecutionState.FAILED.value
@@ -60,14 +60,13 @@ def requirement_analysis_node(state: RFPWorkflowState) -> dict:
         
         if is_quota:
             reason = (
-                "Google Gemini API Quota Exhausted (HTTP 429 RESOURCE_EXHAUSTED). "
-                "Requirement extraction is paused. Please retry once your quota window resets or billing is updated."
+                "GroqCloud API Rate Limit / Quota Exhausted (HTTP 429). "
+                "Requirement extraction is paused. Please retry once your rate-limit window resets or plan limits are updated."
             )
         elif is_billing:
             reason = (
-                "Google Gemini API Project Restriction (HTTP 403 PERMISSION_DENIED). "
-                "The Gemini API free tier is not enabled for this Google Cloud project. "
-                "Please configure a valid key from Google AI Studio with free tier access or enable billing at https://aistudio.google.com/billing."
+                "GroqCloud API Project Restriction (HTTP 403 PERMISSION_DENIED). "
+                "Please verify your GROQ_API_KEY permissions and billing settings at https://console.groq.com."
             )
         else:
             reason = f"Requirement extraction failed: {extraction_error}"

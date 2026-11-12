@@ -4,7 +4,6 @@ Exposes standardized Model Context Protocol (MCP) tools for drafting grounded pr
 validating factual assertions, revising drafts, and exporting formatted Word DOCX response packages.
 """
 
-import json
 import os
 import sys
 import uuid
@@ -19,17 +18,9 @@ backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from app.core.config import settings
-from google import genai
-from google.genai import types
+from app.core.llm import get_groq_client, generate_json
 
 mcp = FastMCP("proposal-server")
-
-def _get_gemini_client() -> genai.Client:
-    api_key = settings.GEMINI_API_KEY
-    if not api_key:
-        api_key = os.getenv("GEMINI_API_KEY", "")
-    return genai.Client(api_key=api_key)
 
 
 @mcp.tool(
@@ -43,7 +34,7 @@ def generate_proposal_section(
     tone: str = "Formal and Persuasive"
 ) -> Dict[str, Any]:
     """Generates an evidence-grounded proposal section."""
-    client = _get_gemini_client()
+    client = get_groq_client()
     
     req_context = "\n".join([f"- [{r.get('requirement_id')}] ({r.get('category')}): {r.get('description')}" for r in requirements[:15]])
     evidence_context = "\n\n".join([f"[Source: {c.get('document_type', 'KB')}, Page {c.get('page_number', '1')}]\n{c.get('text', '')}" for c in evidence_chunks[:10]])
@@ -74,16 +65,7 @@ Return a valid JSON object:
 }}
 """
     try:
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
-                max_output_tokens=3000
-            )
-        )
-        return json.loads(resp.text)
+        return generate_json(prompt, temperature=0.2, max_tokens=3000, client=client)
     except Exception as e:
         return {
             "section_name": section_name,
@@ -103,7 +85,7 @@ def validate_proposal_content(
     requirements: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
     """Performs automated quality assurance and evidence traceability verification."""
-    client = _get_gemini_client()
+    client = get_groq_client()
     
     evidence_context = "\n\n".join([f"[{c.get('chunk_id')}] {c.get('text')}" for c in evidence_chunks[:10]])
     req_list = ", ".join([r.get("requirement_id", "") for r in requirements[:15]])
@@ -136,15 +118,7 @@ Return a valid JSON object:
 }}
 """
     try:
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.1
-            )
-        )
-        return json.loads(resp.text)
+        return generate_json(prompt, temperature=0.1, client=client)
     except Exception as e:
         return {
             "is_valid": False,
@@ -165,7 +139,7 @@ def revise_proposal_section(
     additional_evidence: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """Applies reviewer feedback to rewrite and polish a draft section."""
-    client = _get_gemini_client()
+    client = get_groq_client()
     
     extra_evidence_text = ""
     if additional_evidence:
@@ -194,15 +168,7 @@ Return a valid JSON object:
 }}
 """
     try:
-        resp = client.models.generate_content(
-            model=settings.GEMINI_MODEL,
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2
-            )
-        )
-        return json.loads(resp.text)
+        return generate_json(prompt, temperature=0.2, client=client)
     except Exception as e:
         return {
             "revised_content": section_text,

@@ -1,17 +1,10 @@
 import json
-from google import genai
-from google.genai import types
 from typing import List
-from app.core.config import settings
+from app.core.llm import get_groq_client, generate_text
 from app.schemas.requirement import RequirementCreate
 
-# Dynamic Gemini Client Factory
-def get_gemini_client():
-    from app.core.config import settings
-    return genai.Client(api_key=settings.GEMINI_API_KEY)
-
 # Backwards compatibility reference
-client = get_gemini_client()
+client = get_groq_client()
 
 PROMPT_TEMPLATE = """
 You are an expert RFP (Request for Proposal) analyst.
@@ -38,19 +31,13 @@ DOCUMENT TEXT:
 
 def extract_requirements_from_text(text: str) -> List[RequirementCreate]:
     prompt = PROMPT_TEMPLATE.replace("{text}", text)
-    gemini_client = get_gemini_client()
-    
-    response = gemini_client.models.generate_content(
-        model=settings.GEMINI_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            temperature=0.2,
-            max_output_tokens=4096
-        )
+    response_text = generate_text(
+        prompt,
+        temperature=0.2,
+        max_tokens=4096,
+        json_mode=True,
+        client=get_groq_client(),
     )
-    
-    response_text = response.text
     
     try:
         data = json.loads(response_text)

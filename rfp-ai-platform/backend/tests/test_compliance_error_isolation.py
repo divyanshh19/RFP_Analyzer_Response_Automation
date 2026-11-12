@@ -48,7 +48,7 @@ def test_gemini_429_quota_exhaustion_does_not_create_err001_or_synthetic_require
     # 1. State must be BLOCKED
     assert result["execution_state"] == WorkflowExecutionState.BLOCKED.value
     assert result["workflow_status"] == "REQUIREMENT_ANALYSIS_BLOCKED"
-    assert "429 RESOURCE_EXHAUSTED" in result["blocked_reason"]
+    assert "429" in result["blocked_reason"]
     assert result["retry_stage"] == "REQUIREMENT_ANALYSIS"
 
     # 2. Requirements MUST BE EMPTY (Never ERR-001!)
@@ -112,10 +112,10 @@ def test_gemini_429_during_compliance_evaluation_does_not_classify_as_clarificat
     state["requirements"] = valid_reqs
     state["retrieved_evidence"] = {"REQ-001": [{"chunk_id": "c1", "text": "We provide 99.9% SLA."}]}
 
-    # Simulate Gemini 429 quota exception during compliance assessment
-    with patch("app.mcp.compliance_server._get_gemini_client") as mock_client_factory:
+    # Simulate Groq 429 quota exception during compliance assessment
+    with patch("app.mcp.compliance_server._get_groq_client") as mock_client_factory:
         mock_client = MagicMock()
-        mock_client.models.generate_content.side_effect = Exception("429 RESOURCE_EXHAUSTED: Quota exceeded")
+        mock_client.chat.completions.create.side_effect = Exception("429 rate_limit_exceeded: Quota exceeded")
         mock_client_factory.return_value = mock_client
 
         result = compliance_analysis_node(state)
@@ -123,7 +123,7 @@ def test_gemini_429_during_compliance_evaluation_does_not_classify_as_clarificat
     # 1. Must be Blocked
     assert result["execution_state"] == WorkflowExecutionState.BLOCKED.value
     assert result["workflow_status"] == "COMPLIANCE_ANALYSIS_BLOCKED"
-    assert "429 RESOURCE_EXHAUSTED" in result["blocked_reason"]
+    assert "429" in result["blocked_reason"]
 
     # 2. Compliance matrix must be empty (NOT classified as clarification!)
     assert result["compliance_matrix"] == []

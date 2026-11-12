@@ -74,7 +74,7 @@ def compliance_analysis_node(state: RFPWorkflowState) -> dict:
         raw_matrix = []
         
     if mapping_error:
-        is_quota = any(q in mapping_error.lower() for q in ["429", "resource_exhausted", "quota", "rate limit", "exceeded your current quota"])
+        is_quota = any(q in mapping_error.lower() for q in ["429", "resource_exhausted", "quota", "rate limit", "rate_limit_exceeded", "exceeded your current quota"])
         is_billing = any(b in mapping_error.lower() for b in ["403", "permission_denied", "free tier is not available", "billing"])
         is_blocked = is_quota or is_billing
         execution_state = WorkflowExecutionState.BLOCKED.value if is_blocked else WorkflowExecutionState.FAILED.value
@@ -82,13 +82,13 @@ def compliance_analysis_node(state: RFPWorkflowState) -> dict:
         
         if is_quota:
             reason = (
-                "Google Gemini API Quota Exhausted (HTTP 429 RESOURCE_EXHAUSTED) during compliance analysis. "
-                "Assessment paused. Please retry once your quota window resets."
+                "GroqCloud API Rate Limit / Quota Exhausted (HTTP 429) during compliance analysis. "
+                "Assessment paused. Please retry once your rate-limit window resets."
             )
         elif is_billing:
             reason = (
-                "Google Gemini API Project Restriction (HTTP 403 PERMISSION_DENIED) during compliance analysis. "
-                "Please configure an API key with active tier access or enable billing at https://aistudio.google.com/billing."
+                "GroqCloud API Project Restriction (HTTP 403 PERMISSION_DENIED) during compliance analysis. "
+                "Please verify your GROQ_API_KEY permissions and billing settings at https://console.groq.com."
             )
         else:
             reason = f"Compliance analysis failed: {mapping_error}"

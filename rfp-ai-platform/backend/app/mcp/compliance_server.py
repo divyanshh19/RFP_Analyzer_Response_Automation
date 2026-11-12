@@ -4,7 +4,6 @@ Exposes standardized Model Context Protocol (MCP) tools for mapping requirements
 calculating evidence-grounded compliance scores, and analyzing missing requirements.
 """
 
-import json
 import os
 import sys
 from typing import List, Dict, Any, Optional
@@ -15,17 +14,13 @@ backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from app.core.config import settings
-from google import genai
-from google.genai import types
+from app.core.llm import get_groq_client, generate_json
 
 mcp = FastMCP("compliance-server")
 
-def _get_gemini_client() -> genai.Client:
-    api_key = settings.GEMINI_API_KEY
-    if not api_key:
-        api_key = os.getenv("GEMINI_API_KEY", "")
-    return genai.Client(api_key=api_key)
+
+def _get_groq_client():
+    return get_groq_client()
 
 
 class ComplianceStatus:
@@ -50,7 +45,7 @@ def map_requirements_to_capabilities(
     if not requirements or not isinstance(requirements, list):
         return []
         
-    client = _get_gemini_client()
+    client = _get_groq_client()
     compliance_results = []
     
     # Process in batches or individually to maintain precision
@@ -114,15 +109,7 @@ Return a valid JSON object:
 }}
 """
         try:
-            resp = client.models.generate_content(
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.1
-                )
-            )
-            item_data = json.loads(resp.text)
+            item_data = generate_json(prompt, temperature=0.1, client=client)
             
             # Sanitize status to exact enum
             raw_status = item_data.get("status", "").strip().lower()
